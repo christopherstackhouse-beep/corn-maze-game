@@ -1,0 +1,28 @@
+/* The transparent root never intercepts desktop input or the center reticle. */
+#touchControls{position:fixed;inset:0;z-index:6;pointer-events:none;user-select:none;-webkit-user-select:none}
+#touchControls button,#touchJoystick,#touchLook{pointer-events:auto;touch-action:none;-webkit-touch-callout:none}
+#touchControls button{min-width:48px;min-height:48px;border:1px solid #e4d5a888;border-radius:12px;background:#0a161bc9;color:#eee8d5;font-size:11px;font-weight:bold;padding:8px}
+#touchControls button:active,#touchControls button[aria-pressed=true]{background:#766237dd}
+#touchJoystick{position:absolute;left:calc(env(safe-area-inset-left,0px) + 16px);bottom:calc(env(safe-area-inset-bottom,0px) + 16px);width:128px;height:128px;border:2px solid #d7bc7688;border-radius:50%;background:#0a161b80;display:grid;place-items:center}
+#touchKnob{width:54px;height:54px;border:1px solid #e4d5a8;border-radius:50%;background:#c9ad6477;pointer-events:none}
+#touchLook{position:absolute;left:44%;right:0;top:80px;bottom:132px}
+#touchSprint{position:absolute;left:calc(env(safe-area-inset-left,0px) + 40px);bottom:calc(env(safe-area-inset-bottom,0px) + 156px)}
+.touchActions{position:absolute;right:calc(env(safe-area-inset-right,0px) + 12px);bottom:calc(env(safe-area-inset-bottom,0px) + 12px);display:grid;grid-template-columns:repeat(3,60px);gap:8px}
+#rotatePrompt{position:fixed;inset:0;z-index:30;display:grid;place-content:center;gap:12px;text-align:center;padding:calc(env(safe-area-inset-top,0px) + 24px) calc(env(safe-area-inset-right,0px) + 24px) calc(env(safe-area-inset-bottom,0px) + 24px) calc(env(safe-area-inset-left,0px) + 24px);background:#071016f5;color:#eee8d5}
+#rotatePrompt strong{font-size:24px}#rotatePrompt span{font-size:14px;line-height:1.5}
+.touch-device #mobile{display:none}
+.touch-device header{top:calc(env(safe-area-inset-top,0px) + 12px);left:calc(env(safe-area-inset-left,0px) + 16px);right:calc(env(safe-area-inset-right,0px) + 16px)}
+.touch-device main{top:calc(env(safe-area-inset-top,0px) + 72px);bottom:calc(env(safe-area-inset-bottom,0px) + 16px);left:calc(env(safe-area-inset-left,0px) + 24px);width:calc(100% - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px) - 48px);max-width:620px;transform:none;overflow-y:auto}
+.touch-device .dialog{padding:calc(env(safe-area-inset-top,0px) + 16px) calc(env(safe-area-inset-right,0px) + 16px) calc(env(safe-area-inset-bottom,0px) + 16px) calc(env(safe-area-inset-left,0px) + 16px)}
+.touch-device #pause{overflow-y:auto;justify-content:safe center}
+.touch-gameplay #game{touch-action:none}
+.touch-gameplay .keyline{display:none}
+.touch-gameplay .mission{top:calc(env(safe-area-inset-top,0px) + 58px);left:calc(env(safe-area-inset-left,0px) + 16px);gap:5px;max-width:42vw}
+.touch-gameplay .mission span{font-size:10px}
+.touch-gameplay .bottom{left:calc(env(safe-area-inset-left,0px) + 160px);right:calc(env(safe-area-inset-right,0px) + 216px);bottom:calc(env(safe-area-inset-bottom,0px) + 18px);gap:10px}
+.touch-gameplay .meter{width:60px}.touch-gameplay .bottom small{font-size:8px;letter-spacing:0}
+.touch-gameplay .ammo strong{font-size:28px}.touch-gameplay .ammo span{font-size:9px}
+.touch-gameplay #status{display:none}
+.touch-gameplay #dialogue{bottom:calc(env(safe-area-inset-bottom,0px) + 132px);padding:8px 12px;max-width:50vw}
+.touch-gameplay #dialogue span{font-size:13px}
+@media(max-height:360px){#touchJoystick{width:112px;height:112px}#touchSprint{bottom:calc(env(safe-area-inset-bottom,0px) + 136px)}.touchActions{grid-template-columns:repeat(3,52px);gap:6px}.touch-gameplay .bottom{right:calc(env(safe-area-inset-right,0px) + 188px)}}

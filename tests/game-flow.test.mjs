@@ -1,16 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import vm from 'node:vm';
-import {readFileSync} from 'node:fs';
-function game(){
- const gradient={addColorStop(){}};const draw=new Proxy({createLinearGradient:()=>gradient,createRadialGradient:()=>gradient},{get:(o,k)=>k in o?o[k]:()=>{}});
- const nodes={},events={},windowEvents={},requests=[];
- function node(){return {style:{},hidden:true,textContent:'',value:'',events:{},width:320,height:560,playCount:0,pauseCount:0,getContext:()=>draw,addEventListener(type,cb){this.events[type]=cb},pause(){this.pauseCount++},play(){this.playCount++;return Promise.resolve()},focus(){},replaceChildren(){},appendChild(){},requestPointerLock:()=>Promise.resolve()}}
- const document={activeElement:null,getElementById:id=>nodes[id]??=node(),createElement:node,querySelector:node,querySelectorAll:()=>[],addEventListener(type,cb){(events[type]??=[]).push(cb)},exitPointerLock(){}};
- const env={console,Math,Set,Map,Image:class{naturalWidth=1024;naturalHeight=1536},document,window:{innerWidth:1280,innerHeight:800,addEventListener:(type,cb)=>windowEvents[type]=cb},requestAnimationFrame(){},setInterval(){return 1},clearInterval(){},localStorage:{getItem:()=>'',setItem(){}},AbortSignal,fetch:async(path,options)=>{requests.push({path,options});return {ok:true,json:async()=>path==='/api/runs'?{runId:crypto.randomUUID()}:path==='/api/scores'?{entry:{id:'saved',rank:1,elapsedSeconds:12,goodwill:77}}:{entries:[],total:0}}}};
- vm.createContext(env);for(const f of ['sound','guest-art','guests','lester-ai','maze-layers','capture','defeat','alien','leaderboard','game'])vm.runInContext(readFileSync(new URL('../dist/'+f+'.js',import.meta.url),'utf8'),env);for(const cb of events.DOMContentLoaded||[])cb();
- return {run:s=>vm.runInContext(s,env),nodes,windowEvents,requests};
-}
+import {game} from './helpers/game.mjs';
 test('capture time and goodwill freeze at the net hit, before victory animation',async()=>{
  const g=game();g.run('ArcadeLeaderboard.beginRun();ArcadeLeaderboard.tick(12850);ArcadeLeaderboard.capture(77);ArcadeLeaderboard.tick(99000);ArcadeLeaderboard.capture(1);ArcadeLeaderboard.victory();');
  assert.equal(g.nodes.captureSummary.textContent,'CAPTURE TIME 0:12 · GUEST GOODWILL 77%');g.nodes.arcadeName.value='ARCADE TEST';await g.nodes.scoreEntry.events.submit({preventDefault(){}});
