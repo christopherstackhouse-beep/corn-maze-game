@@ -1,0 +1,7 @@
+{
+  "game": "Lester After Dark",
+  "sourceRevision": "336fde12daf5455c8b4915624f409357fde01f0c",
+  "gameFilesPreservedByteForByte": true,
+  "gameFileCount": 47,
+  "exportAdditions": "Vercel routes and persistent libSQL leaderboard adapter, deployment documentation and integration tests"
+}
