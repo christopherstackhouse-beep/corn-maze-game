@@ -48,10 +48,39 @@ lesterImage.onerror=()=>{
 };
 function refreshStart(){if(lesterLoadError||guestLoadError){$('start').disabled=false;$('start').textContent='RETRY CHARACTER DOWNLOAD →';return}const ready=lesterReady&&guestsReady;$('start').disabled=!ready;$('start').innerHTML=ready?'ENTER THE MAZE <span>→</span>':'LOADING CHARACTERS…'}
 loadLester();loadGuests();
-let audioCtx,master,soundscape;function sfx(name,amount=1){soundscape?.play(name,amount)}const voices=new Set();function audioInit(){if(!audioCtx){audioCtx=new(window.AudioContext||window.webkitAudioContext)();master=audioCtx.createGain();master.gain.value=muted?0:.65;const limiter=audioCtx.createDynamicsCompressor();limiter.threshold.value=-12;limiter.knee.value=12;limiter.ratio.value=6;master.connect(limiter);limiter.connect(audioCtx.destination);soundscape=new MazeSound(audioCtx,master)}audioCtx.resume()}
-function tone(freq,duration,vol=.15,type='sine'){if(!audioCtx)return;let o=audioCtx.createOscillator(),g=audioCtx.createGain(),t=audioCtx.currentTime;o.type=type;o.frequency.setValueAtTime(freq,t);o.frequency.exponentialRampToValueAtTime(freq*.4,t+duration);g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+duration);o.connect(g);g.connect(master);o.start();o.stop(t+duration)}
+let audioCtx,master,soundscape,audioResumeAttempt;
+function sfx(name,amount=1){soundscape?.play(name,amount)}const voices=new Set();
+function updateAudioActivation(){
+ const hidden=!started||muted||document.hidden||alienVideoActive()||audioCtx?.state==='running';
+ if($('audioEnable').hidden!==hidden)$('audioEnable').hidden=hidden;
+}
+function audioInit(retryPending=false){
+ try{
+  if(!audioCtx){
+   audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+   audioCtx.addEventListener('statechange',updateAudioActivation);
+  }
+  // Resume synchronously inside the gesture, before building/loading the sound graph.
+  // A later gesture may retry even if the browser left an earlier resume pending.
+  if(audioCtx.state!=='running'&&(!audioResumeAttempt||retryPending)){
+   const attempt={};audioResumeAttempt=attempt;
+   const settled=()=>{if(audioResumeAttempt===attempt)audioResumeAttempt=null;updateAudioActivation()};
+   Promise.resolve(audioCtx.resume()).then(settled,settled);
+  }
+  if(!master){
+   master=audioCtx.createGain();master.gain.value=muted?0:.65;
+   const limiter=audioCtx.createDynamicsCompressor();limiter.threshold.value=-12;limiter.knee.value=12;limiter.ratio.value=6;
+   master.connect(limiter);limiter.connect(audioCtx.destination);soundscape=new MazeSound(audioCtx,master);
+  }
+ }catch{
+  audioResumeAttempt=null; // Includes unavailable Web Audio and synchronous resume failures.
+ }
+ updateAudioActivation();
+}
+
+function tone(freq,duration,vol=.15,type='sine'){if(audioCtx?.state!=='running')return;let o=audioCtx.createOscillator(),g=audioCtx.createGain(),t=audioCtx.currentTime;o.type=type;o.frequency.setValueAtTime(freq,t);o.frequency.exponentialRampToValueAtTime(freq*.4,t+duration);g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+duration);o.connect(g);g.connect(master);o.start();o.stop(t+duration)}
 // Recorded giggles with distance attenuation and directional panning.
-function giggle(close=false){if(!audioCtx||!playing)return;
+function giggle(close=false){if(audioCtx?.state!=='running'||!playing)return;
  if(close){window.speechSynthesis?.cancel();soundscape?.stopGuestVoice();guestTalkIn=4;soundscape.duckUntil=audioCtx.currentTime+3}
  if(soundscape?.laugh(close,dist(),Math.sin(wrap(Math.atan2(lester.y-player.y,lester.x-player.x)-player.a))))return;
 let t=audioCtx.currentTime,d=dist(),pan=audioCtx.createStereoPanner(),out=audioCtx.createGain();pan.pan.value=close?0:Math.sin(wrap(Math.atan2(lester.y-player.y,lester.x-player.x)-player.a));out.gain.value=close?3:Math.max(.4,2.5/(1+d*.12));pan.connect(out);out.connect(master);let count=close?13:4+Math.floor(Math.random()*3),total=count*.15+.3;for(let i=0;i<count;i++){let start=t+i*.15+rand(0,.025),o=audioCtx.createOscillator(),env=audioCtx.createGain();o.type='sawtooth';o.frequency.setValueAtTime(rand(170,215),start);o.frequency.exponentialRampToValueAtTime(rand(260,310),start+.045);o.frequency.exponentialRampToValueAtTime(rand(130,170),start+.12);env.gain.setValueAtTime(.001,start);env.gain.exponentialRampToValueAtTime(.18,start+.025);env.gain.exponentialRampToValueAtTime(.001,start+.13);o.connect(env);for(let [f,q,gain]of [[650,3,.65],[1450,5,.3],[2600,7,.12]]){let b=audioCtx.createBiquadFilter(),g=audioCtx.createGain();b.type='bandpass';b.frequency.value=f;b.Q.value=q;g.gain.value=gain;env.connect(b);b.connect(g);g.connect(pan)}o.start(start);o.stop(start+.15)}setTimeout(()=>{pan.disconnect();out.disconnect()},total*1000+100)}
@@ -59,12 +88,21 @@ function notice(s){$('toast').textContent=s;toastTime=3}function reload(){if(ali
 function fire(){if(alienCinematic()||captureTime>=0||defeatTime>=0)return;if(attackTime>0)return;if(!playing||reloading||shot>.12)return;if(ammo<=0){notice('Empty launcher. Press R to reload.');sfx('empty');return}checkLesterEncounter();ammo--;shot=.5;sfx('launch');const hit=aimedTarget();if(hit&&!hit.alien&&!hit.guest&&!revolt)checkLesterEncounter(true);if(hit?.alien){netAlien()}else if(hit?.guest){captureGuest(hit.guest)}else if(hit){if(revolt){notice('Forget Lester. The guests are after YOU!');lester.mode='flee'}else if(encounter===1||encounter===4){notice('Too slow! Lester darted clear of the net.')}else if(alien?.state==='angry'){notice('The alien is your immediate problem. RUN!')}else beginLesterCapture()}else{notice('Net missed. Close the distance.');lester.mode='flee';scareCooldown=Math.max(scareCooldown,3)}}
 
 function finish(win,afterAnimation=false){if(revolt&&!attackDone)return;if(!win&&!afterAnimation){beginLesterDefeat();return}playing=false;finished=true;document.exitPointerLock?.();$('end').hidden=false;$('endTag').textContent=win?'INCIDENT RESOLVED':'SHIFT CUT SHORT';$('endTitle').textContent=win?'The tickling ends here.':'Lester got the last laugh.';$('endText').textContent=win?'Lester is safely tangled in your net. North Fulck Farms can finally reopen without unsolicited tickling.':'Guest Goodwill hit zero. Between the nets and the tickling, the visitors have lost faith in the staff.';if(!win&&attackDone){$('endTag').textContent='GUEST RELATIONS: TERMINATED';$('endTitle').textContent='The guests got their refund.';$('endText').textContent='You ran, but the furious guests caught and stabbed you. Three complaints turned the entire maze against you. Lester is still out there tickling guests whether they like it or not.'}if(!win)sfx('lose');if(win){$('endText').textContent+=` Guest complaints: ${complaints} / 3.`;ArcadeLeaderboard.victory()}window.speechSynthesis?.cancel()}
-function reset(){if(!lesterReady||!guestsReady){if(!lesterReady)loadLester();if(!guestsReady)loadGuests();return}generateMaze();player={x:1.5,y:1.5,a:maze[1][2]===0?0:Math.PI/2};spawn();resetLesterEncounters();spawnGuests();resetMazeLayers();resetAlien();captureTime=-1;defeatTime=-1;visited.clear();ammo=3;nerve=100;reloading=shot=scare=0;scareCooldown=8;nextGiggle=3;light=true;finished=false;time=0;mapOpen=true;started=true;ArcadeLeaderboard.beginRun();$('scoreSubmit').textContent='SAVE SCORE';$('end').hidden=true;$('menu').hidden=true;$('hud').hidden=false;resume()}
-function resume(){releaseInputs();if(touchControls.enabled&&touchControls.portrait()){playing=false;$('pause').hidden=false;touchControls.sync();return}if(alienVideoActive()){resumeAlienVideo();touchControls.sync();return}audioInit();playing=true;$('pause').hidden=true;touchControls.sync();if(!touchControls.enabled)canvas.requestPointerLock?.()?.catch(()=>notice('Click the view to lock your mouse. Arrow keys also turn.'))}
-$('start').onclick=reset;$('again').onclick=reset;$('resume').onclick=resume;$('sound').onclick=()=>{muted=!muted;if(master)master.gain.value=muted?0:.65;$('sound').textContent=muted?'SOUND OFF':'SOUND ON';$('alienFilmVideo').muted=muted};
+function reset(){if(!lesterReady||!guestsReady){if(!lesterReady)loadLester();if(!guestsReady)loadGuests();return}audioInit(true);generateMaze();player={x:1.5,y:1.5,a:maze[1][2]===0?0:Math.PI/2};spawn();resetLesterEncounters();spawnGuests();resetMazeLayers();resetAlien();captureTime=-1;defeatTime=-1;visited.clear();ammo=3;nerve=100;reloading=shot=scare=0;scareCooldown=8;nextGiggle=3;light=true;finished=false;time=0;mapOpen=true;started=true;ArcadeLeaderboard.beginRun();$('scoreSubmit').textContent='SAVE SCORE';$('end').hidden=true;$('menu').hidden=true;$('hud').hidden=false;resume()}
+function resume(){audioInit();releaseInputs();if(touchControls.enabled&&touchControls.portrait()){playing=false;$('pause').hidden=false;touchControls.sync();return}if(alienVideoActive()){resumeAlienVideo();touchControls.sync();return}playing=true;$('pause').hidden=true;touchControls.sync();if(!touchControls.enabled)canvas.requestPointerLock?.()?.catch(()=>notice('Click the view to lock your mouse. Arrow keys also turn.'))}
+$('start').onclick=reset;$('again').onclick=reset;
+$('resume').onclick=()=>{audioInit(true);resume()};
+$('audioEnable').onclick=()=>audioInit(true);
+$('sound').onclick=()=>{muted=!muted;if(master)master.gain.value=muted?0:.65;$('sound').textContent=muted?'SOUND OFF':'SOUND ON';$('alienFilmVideo').muted=muted;if(!muted)audioInit(true);updateAudioActivation()};
+// Retrying from a fresh gameplay gesture also covers interrupted/pending iOS contexts.
+// Menu/retry buttons have their own click handlers, so do not double-submit their attempts.
+document.addEventListener('pointerup',e=>{
+ if(started&&!muted&&audioCtx?.state!=='running'&&!document.hidden&&!e.target.closest?.('#start,#again,#resume,#sound,#audioEnable'))audioInit(true);
+},true);
+window.addEventListener('focus',updateAudioActivation);
 document.addEventListener('pointerlockchange',()=>{if(!document.pointerLockElement&&playing&&!alienVideoActive()&&!touchControls.enabled)pauseGame();keys.ShiftLeft=keys.ShiftRight=false});
 window.addEventListener('blur',pauseGame);
-document.addEventListener('visibilitychange',()=>{if(document.hidden)pauseGame()});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)pauseGame();updateAudioActivation()});
 document.addEventListener('mousemove',e=>{if(playing&&!alienCinematic()&&captureTime<0&&defeatTime<0&&document.pointerLockElement)player.a+=e.movementX*.0024});
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
 canvas.addEventListener('mousedown',e=>{if(!playing||touchControls.enabled||e.sourceCapabilities?.firesTouchEvents)return;if(e.button===2){e.preventDefault();giveGuestMap();return}if(e.button!==0)return;if(!document.pointerLockElement)canvas.requestPointerLock?.();else fire()});
@@ -111,4 +149,4 @@ function miniMap(){
   drawLesterPing(ox,oy,size,span);ctx.restore();
 }
 
-function frame(now){touchControls.sync();const cinematicDelta=Math.max(0,(now-last)/1000||.016);if(playing&&captureTime<0&&defeatTime<0&&!alienCinematic())ArcadeLeaderboard.tick(last?now-last:0);let dt=Math.min(.04,(now-last)/1000||.016);last=now;guestAudioState();soundscape?.tick(dt,playing&&!alienVideoActive(),nerve,time,(revolt||alien?.state==='angry')&&defeatTime<0&&!alienCinematic());if(playing)update(alienScene==='extract'?cinematicDelta:dt);touchControls.sync();drawWorld();if(alienCinematic()){drawAlienScene()}else if(defeatTime>=0){drawLesterDefeat()}else if(captureTime>=0){drawLesterCapture()}else if(started){drawNetLauncher();if(mapOpen)miniMap();if(scare>0){ctx.fillStyle=`rgba(95,40,20,${scare*.2})`;ctx.fillRect(0,0,W,H);let h=H*(1.5+Math.sin(scare*31)*.08);ctx.drawImage(actor,W/2-h/3,H*.1-h*.08,h*2/3,h);ctx.fillStyle='#f2dbc7';ctx.font=`bold ${Math.round(H*.055)}px Georgia`;ctx.textAlign='center';ctx.fillText('TICKLE TICKLE!',W/2,H*.86);ctx.textAlign='left'}drawChase()}else{player.a+=dt*.025;ctx.fillStyle='#030b1035';ctx.fillRect(0,0,W,H)}requestAnimationFrame(frame)}generateMaze();player={x:1.5,y:1.5,a:0};spawn();requestAnimationFrame(frame);
+function frame(now){touchControls.sync();const cinematicDelta=Math.max(0,(now-last)/1000||.016);if(playing&&captureTime<0&&defeatTime<0&&!alienCinematic())ArcadeLeaderboard.tick(last?now-last:0);let dt=Math.min(.04,(now-last)/1000||.016);last=now;guestAudioState();soundscape?.tick(dt,playing&&!alienVideoActive(),nerve,time,(revolt||alien?.state==='angry')&&defeatTime<0&&!alienCinematic());if(playing)update(alienScene==='extract'?cinematicDelta:dt);touchControls.sync();updateAudioActivation();drawWorld();if(alienCinematic()){drawAlienScene()}else if(defeatTime>=0){drawLesterDefeat()}else if(captureTime>=0){drawLesterCapture()}else if(started){drawNetLauncher();if(mapOpen)miniMap();if(scare>0){ctx.fillStyle=`rgba(95,40,20,${scare*.2})`;ctx.fillRect(0,0,W,H);let h=H*(1.5+Math.sin(scare*31)*.08);ctx.drawImage(actor,W/2-h/3,H*.1-h*.08,h*2/3,h);ctx.fillStyle='#f2dbc7';ctx.font=`bold ${Math.round(H*.055)}px Georgia`;ctx.textAlign='center';ctx.fillText('TICKLE TICKLE!',W/2,H*.86);ctx.textAlign='left'}drawChase()}else{player.a+=dt*.025;ctx.fillStyle='#030b1035';ctx.fillRect(0,0,W,H)}requestAnimationFrame(frame)}generateMaze();player={x:1.5,y:1.5,a:0};spawn();requestAnimationFrame(frame);

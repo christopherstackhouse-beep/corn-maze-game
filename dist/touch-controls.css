@@ -26,3 +26,6 @@
 .touch-gameplay #dialogue{bottom:calc(env(safe-area-inset-bottom,0px) + 132px);padding:8px 12px;max-width:50vw}
 .touch-gameplay #dialogue span{font-size:13px}
 @media(max-height:360px){#touchJoystick{width:112px;height:112px}#touchSprint{bottom:calc(env(safe-area-inset-bottom,0px) + 136px)}.touchActions{grid-template-columns:repeat(3,52px);gap:6px}.touch-gameplay .bottom{right:calc(env(safe-area-inset-right,0px) + 188px)}}
+
+/* Audio recovery stays above the view, away from touch actions and the reticle. */
+#audioEnable{position:fixed;top:calc(env(safe-area-inset-top,0px) + 12px);left:50%;transform:translateX(-50%);z-index:16;max-width:36vw;min-height:34px;padding:8px;border:1px solid #c9ad6488;border-radius:5px;background:#0a161be8;color:#e4d5a8;font-size:9px;letter-spacing:1px;touch-action:manipulation}

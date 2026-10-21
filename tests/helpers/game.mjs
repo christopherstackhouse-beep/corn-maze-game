@@ -2,7 +2,7 @@ import vm from 'node:vm';
 import {readFileSync} from 'node:fs';
 
 // Execute the shipped game scripts together, with observable DOM/input boundaries.
-export function game({touch=false,width=1280,height=800}={}) {
+export function game({touch=false,width=1280,height=800,AudioContext}={}) {
  const gradient={addColorStop(){}};
  const draw=new Proxy({createLinearGradient:()=>gradient,createRadialGradient:()=>gradient},{get:(o,k)=>k in o?o[k]:()=>{}});
  const nodes={},events={},windowEvents={},requests=[];
@@ -30,6 +30,7 @@ export function game({touch=false,width=1280,height=800}={}) {
   addEventListener(type,cb){(events[type]??=[]).push(cb)},exitPointerLock(){document.pointerLockElement=null}
  };
  const window={innerWidth:width,innerHeight:height,matchMedia:()=>({matches:touch}),addEventListener:(type,cb)=>listen(windowEvents,type,cb)};
+ if(AudioContext)window.AudioContext=AudioContext;
  const env={console,Math,Set,Map,navigator:{maxTouchPoints:touch?5:0},Image:class{naturalWidth=1024;naturalHeight=1536},document,window,
   requestAnimationFrame(){},setInterval(){return 1},clearInterval(){},localStorage:{getItem:()=>'',setItem(){}},AbortSignal,
   fetch:async(path,options)=>{requests.push({path,options});return {ok:true,json:async()=>path==='/api/runs'?{runId:crypto.randomUUID()}:path==='/api/scores'?{entry:{id:'saved',rank:1,elapsedSeconds:12,goodwill:77}}:{entries:[],total:0}}}
