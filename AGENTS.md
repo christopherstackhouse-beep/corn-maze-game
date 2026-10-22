@@ -18,6 +18,13 @@ This repository is the playable browser game **Lester After Dark**, presented as
 ## Controls and feel
 WASD moves, mouse looks/fires, right click gives maps, Shift sprints, R reloads, F flashlight, M toggles minimap, and Escape pauses. Preserve existing behavior, targeting, sound, raycast rendering, and keyboard/pointer-lock handling. Avoid adding explanatory main-menu copy that removes the game's mystery.
 
+## Mobile input prototype (Phase 1)
+- Landscape touch controls are an additive input adapter in `dist/touch-controls.js`, with a provisional safe-area layout in `dist/touch-controls.css`. Preserve the desktop keyboard/mouse path.
+- Keep independent Pointer Event IDs/capture for joystick, horizontal look, held sprint, and intentional action taps. Reuse existing movement/collision and action functions; never duplicate gameplay/scoring rules in the touch interface.
+- Touch play must not require pointer lock or orientation-lock APIs. Portrait play pauses behind a rotation prompt and requires an explicit resume after rotation. Clear held inputs on pause, focus/visibility loss, cancellation, orientation changes, and cinematics.
+- Hide/reset the gameplay touch overlay during menus, leaderboards and cinematics. Preserve all existing media and the backend contract. This is a prototype; real iOS Safari and Android Chrome acceptance testing is still required. See `docs/MOBILE-CONTROLS.md` for controls, tests and the next-phase checklist.
+- Audio activation must be requested directly from start/resume gestures, reuse the existing context/graph, and preserve intentional mute. Check context state and offer TAP TO ENABLE SOUND when activation fails; physical-device audio acceptance remains separate from automated tests.
+
 ## Project organization
 - `dist/` is intentionally tracked and contains the runtime HTML, CSS, JavaScript, sprites, music, dialogue, and cinematic media. The site is not a conventional bundled SPA.
 - `dist/game.js` hosts main gameplay/raycast logic; `dist/guests.js` guest behavior; `dist/lester-ai.js` encounter progression; `dist/alien.js` alien behavior/animations; `dist/capture.js` and `dist/defeat.js` major cinematics; `dist/leaderboard.js` browser scoreboard.

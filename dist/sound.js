@@ -19,7 +19,7 @@ class MazeSound {
     if(this.guestVoice){this.guestVoice.stop();this.guestVoice=null}
   }
   playGuestVoice(key){
-    this.stopGuestVoice();const buffer=this.laughBuffers[key];if(!buffer)return 0;
+    this.stopGuestVoice();if(this.ctx.state!=='running')return 0;const buffer=this.laughBuffers[key];if(!buffer)return 0;
     const c=this.ctx,source=c.createBufferSource(),gain=c.createGain();
     source.buffer=buffer;source.playbackRate.value=1;gain.gain.value=1;
     source.connect(gain);gain.connect(this.laughOutput);this.guestVoice=source;
@@ -27,6 +27,7 @@ class MazeSound {
     source.start();return buffer.duration;
   }
   escapeTaunt(){
+    if(this.ctx.state!=='running')return false;
     const buffer=this.laughBuffers.escape;if(!buffer)return false;
     for(const source of this.laughSources)source.stop();this.laughSources.clear();
     const c=this.ctx,source=c.createBufferSource(),gain=c.createGain();
@@ -50,6 +51,7 @@ class MazeSound {
   }
   // Attack asset mixes both supplied recordings from time zero, preserving their full lengths.
   laugh(attack,distance,panValue){
+    if(this.ctx.state!=='running')return true;
     // Skip distant cues while another laugh plays, including the attack cackle.
     if(!attack&&this.laughSources.size)return true;
     const buffer=attack?this.laughBuffers.attack:this.nextDistantGiggle();
@@ -76,6 +78,7 @@ class MazeSound {
     o.connect(g);g.connect(p);p.connect(destination);o.start(t);o.stop(t+duration+.02);o.onended=()=>{o.disconnect();g.disconnect();p.disconnect()};
   }
   play(name,amount=1) {
+    if(this.ctx.state!=='running')return;
     switch(name){
       case 'step': this.burst({duration:.13,level:.10*amount,freq:650,pan:Math.random()*.18-.09});this.note(85,38,.12,.07*amount);this.burst({duration:.18,level:.035*amount,freq:3500,delay:.025});break;
       case 'launch': this.burst({duration:.36,level:.45,freq:1600,filter:'lowpass'});this.note(135,33,.22,.26);this.burst({duration:.45,level:.10,freq:4200,delay:.08});break;
@@ -90,8 +93,10 @@ class MazeSound {
     }
   }
   tick(dt,playing,nerve,time,chasing=false) {
-    this.output.gain.setTargetAtTime(this.ctx.currentTime<this.duckUntil?.28:1,this.ctx.currentTime,.04);
     if(!playing&&this.active){this.stopGuestVoice();for(const source of this.laughSources)source.stop();this.laughSources.clear();this.duckUntil=0}
+    // Cleanup still runs on pause; do not queue one-shots against a frozen audio clock.
+    if(this.ctx.state!=='running')return;
+    this.output.gain.setTargetAtTime(this.ctx.currentTime<this.duckUntil?.28:1,this.ctx.currentTime,.04);
     const musicOn=playing&&chasing;
     if(musicOn!==this.musicActive){this.musicActive=musicOn;this.musicGain.gain.setTargetAtTime(musicOn?.75:0,this.ctx.currentTime,.12);if(musicOn){this.musicBeat=0;this.musicNext=0}}
     if(musicOn){
