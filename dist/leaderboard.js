@@ -10,7 +10,7 @@ const ArcadeLeaderboard=(()=>{
   if(!response.ok)throw Error(result.error||'The leaderboard is temporarily unavailable.');return result;
  }
  function beginRun(){
-  const current=++sequence;lastSavedId=null;
+  const current=++sequence;lastSavedId=null;CaptureShare.reset();
   round={sequence:current,elapsedMs:0,captured:null,runId:null,startError:null,startPromise:null,saved:false};
   const active=round;
   active.startPromise=request('/api/runs',{}).then(r=>{active.runId=r.runId}).catch(e=>{active.startError=e.message});
@@ -21,7 +21,7 @@ const ArcadeLeaderboard=(()=>{
  function victory(){
   if(!round?.captured)return;
   el('captureSummary').textContent=`CAPTURE TIME ${formatTime(round.captured.elapsedSeconds)} · GUEST GOODWILL ${round.captured.goodwill}%`;
-  el('captureSummary').hidden=false;el('scoreEntry').hidden=false;el('scoreSubmit').disabled=false;
+  el('captureSummary').hidden=false;el('scoreEntry').hidden=false;el('scoreSubmit').disabled=false;CaptureShare.victory(round.captured);
   el('scoreMessage').textContent='';
   try{el('arcadeName').value=localStorage.getItem('lester.arcadeName')||''}catch{}
  }
@@ -34,7 +34,7 @@ const ArcadeLeaderboard=(()=>{
    await active.startPromise;if(!active.runId)throw Error(active.startError||'This run could not connect to the leaderboard. Start another game when connected.');
    const result=await request('/api/scores',{runId:active.runId,name,...active.captured});
    active.saved=true;try{localStorage.setItem('lester.arcadeName',name)}catch{}
-   if(round!==active)return;lastSavedId=result.entry.id;el('scoreMessage').textContent=`Score saved! You are #${result.entry.rank}.`;el('scoreSubmit').textContent='SCORE SAVED';
+   if(round!==active)return;CaptureShare.savedScore(result.entry);lastSavedId=result.entry.id;el('scoreMessage').textContent=`Score saved! You are #${result.entry.rank}.`;el('scoreSubmit').textContent='SCORE SAVED';
    open(`Your score is #${result.entry.rank}: ${formatTime(result.entry.elapsedSeconds)}, ${result.entry.goodwill}% goodwill.`);
   }catch(error){if(round===active){el('scoreMessage').textContent=error.message;el('scoreSubmit').disabled=false}}
  }
@@ -61,6 +61,7 @@ const ArcadeLeaderboard=(()=>{
  document.addEventListener('DOMContentLoaded',()=>{
   el('scoreEntry').addEventListener('submit',submit);el('leaderboardClose').onclick=close;el('leaderboardRefresh').onclick=refresh;
   for(const button of document.querySelectorAll('[data-leaderboard]'))button.onclick=()=>open();
+  if(new URL(window.location.href).searchParams.get('leaderboard')==='1'){open();previousFocus=el('start')}
   el('leaderboard').addEventListener('keydown',e=>{
    if(e.key==='Escape'){e.preventDefault();close()}
    if(e.key==='Tab'){const first=el('leaderboardRefresh'),last=el('leaderboardClose');if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}

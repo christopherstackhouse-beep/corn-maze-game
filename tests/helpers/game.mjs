@@ -2,7 +2,7 @@ import vm from 'node:vm';
 import {readFileSync} from 'node:fs';
 
 // Execute the shipped game scripts together, with observable DOM/input boundaries.
-export function game({touch=false,width=1280,height=800,AudioContext}={}) {
+export function game({touch=false,width=1280,height=800,AudioContext,navigator:browserNavigator={},url='https://game.example/',shareGameURL='',fetchResponse,execCopy}={}) {
  const gradient={addColorStop(){}};
  const draw=new Proxy({createLinearGradient:()=>gradient,createRadialGradient:()=>gradient},{get:(o,k)=>k in o?o[k]:()=>{}});
  const nodes={},events={},windowEvents={},requests=[];
@@ -15,7 +15,7 @@ export function game({touch=false,width=1280,height=800,AudioContext}={}) {
   return {style:{},hidden:id!=='menu',textContent:'',value:'',events:{},attributes,width:320,height:560,playCount:0,pauseCount:0,lockRequests:0,
    getContext:()=>draw,addEventListener(type,cb){listen(this.events,type,cb)},
    pause(){this.pauseCount++},play(){this.playCount++;return Promise.resolve()},
-   focus(){},replaceChildren(){},appendChild(){},
+   focus(){document.activeElement=this},select(){this.selected=true},setSelectionRange(start,end){this.selection=[start,end]},replaceChildren(){},appendChild(){},
    requestPointerLock(){this.lockRequests++;return Promise.resolve()},
    setPointerCapture(id){captures.add(id)},hasPointerCapture:id=>captures.has(id),
    releasePointerCapture(id){captures.delete(id);this.events.lostpointercapture?.({pointerId:id})},
@@ -27,16 +27,18 @@ export function game({touch=false,width=1280,height=800,AudioContext}={}) {
  const document={activeElement:null,hidden:false,pointerLockElement:null,
   documentElement:{classList:{toggle(name,on){if(on)classes.add(name);else classes.delete(name)},contains:name=>classes.has(name)}},
   getElementById:id=>nodes[id]??=node(id),createElement:()=>node(),querySelector:()=>node(),querySelectorAll:()=>[],
+  execCommand:()=>execCopy?.()===true,
   addEventListener(type,cb){(events[type]??=[]).push(cb)},exitPointerLock(){document.pointerLockElement=null}
  };
- const window={innerWidth:width,innerHeight:height,matchMedia:()=>({matches:touch}),addEventListener:(type,cb)=>listen(windowEvents,type,cb)};
+ const window={location:new URL(url),innerWidth:width,innerHeight:height,matchMedia:()=>({matches:touch}),addEventListener:(type,cb)=>listen(windowEvents,type,cb)};
  if(AudioContext)window.AudioContext=AudioContext;
- const env={console,Math,Set,Map,navigator:{maxTouchPoints:touch?5:0},Image:class{naturalWidth=1024;naturalHeight=1536},document,window,
+ const env={console,Math,Set,Map,URL,navigator:{maxTouchPoints:touch?5:0,...browserNavigator},Image:class{naturalWidth=1024;naturalHeight=1536},document,window,
   requestAnimationFrame(){},setInterval(){return 1},clearInterval(){},localStorage:{getItem:()=>'',setItem(){}},AbortSignal,
-  fetch:async(path,options)=>{requests.push({path,options});return {ok:true,json:async()=>path==='/api/runs'?{runId:crypto.randomUUID()}:path==='/api/scores'?{entry:{id:'saved',rank:1,elapsedSeconds:12,goodwill:77}}:{entries:[],total:0}}}
+  fetch:async(path,options)=>{requests.push({path,options});if(fetchResponse)return fetchResponse(path,options);return {ok:true,json:async()=>path==='/api/runs'?{runId:crypto.randomUUID()}:path==='/api/scores'?{entry:{id:'saved',rank:1,elapsedSeconds:12,goodwill:77}}:{entries:[],total:0}}}
  };
  vm.createContext(env);
- for(const f of ['sound','guest-art','guests','lester-ai','maze-layers','capture','defeat','alien','leaderboard','touch-controls','game'])vm.runInContext(readFileSync(new URL('../../dist/'+f+'.js',import.meta.url),'utf8'),env,{filename:f+'.js'});
+ for(const f of ['sound','guest-art','guests','lester-ai','maze-layers','capture','defeat','alien','share-config','share-capture','leaderboard','touch-controls','game'])vm.runInContext(readFileSync(new URL('../../dist/'+f+'.js',import.meta.url),'utf8'),env,{filename:f+'.js'});
+ window.LESTER_SHARE_GAME_URL=shareGameURL;
  for(const cb of events.DOMContentLoaded||[])cb();
  function emit(type,event={}){for(const cb of events[type]||[])cb(event)}
  function pointer(id,type,pointerId,x=250,y=250,pointerType='touch') {

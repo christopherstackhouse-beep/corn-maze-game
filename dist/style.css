@@ -13,3 +13,14 @@ main{width:min(620px,86vw);top:51%;transform:translateY(-45%)}.farmTitle{font-fa
 #alienFilm{position:fixed;inset:0;z-index:9;background:#000;display:flex;align-items:center;justify-content:center}#alienFilmVideo{width:100%;height:100%;object-fit:contain}#alienFilmStart{position:absolute;left:50%;top:70%;transform:translate(-50%,-50%);text-align:center;max-width:90vw}#pause{z-index:15}
 
 .menuVersion{margin-top:16px;font-size:10px;color:#a5a79d}
+
+/* Capture sharing stays inside the existing scrollable results panel. */
+#end> *{flex-shrink:0}
+#captureShare{width:min(420px,100%);margin-top:14px}
+.captureShareActions{display:flex;flex-wrap:wrap;gap:10px}
+#captureShare button{flex:1 1 170px;min-width:0;min-height:48px;margin:0;text-align:center;padding:14px 16px}
+#shareStatus{font-size:12px;line-height:1.5;margin:8px 0;overflow-wrap:anywhere}
+#shareStatus:empty{display:none}
+#shareManual label{display:block;font-size:10px;letter-spacing:1px;margin:12px 0 8px;color:#dfcb96}
+#shareManualText{width:100%;max-width:100%;padding:10px;background:#12232a;color:#fff4d5;border:1px solid #60736d;font:14px/1.5 monospace;resize:vertical}
+#end .captureSummary{max-width:100%;overflow-wrap:anywhere}

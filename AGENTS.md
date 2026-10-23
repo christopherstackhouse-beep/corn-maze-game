@@ -40,6 +40,11 @@ WASD moves, mouse looks/fires, right click gives maps, Shift sprints, R reloads,
 - Existing migrations are checksummed and applied by the Vercel build when the database is configured. Do not modify already-applied migrations, delete production scores, weaken submission validation/rate limiting, or silently reset the database. For schema changes, add new forward migrations and test against a disposable database.
 - Prefer separate preview/staging and production databases so test scores never pollute live rankings. Do not point an experimental deployment at production without explicit approval.
 
+## Capture sharing
+- Sharing is victory-only and works before or after saving. Use frozen capture statistics; include a rank only from a confirmed score API response for the current round. Do not expose run IDs or automatically share after saving.
+- Native sharing must run directly from a click, with quiet cancellation and honest clipboard/manual fallbacks. Preserve the existing leaderboard save/open/close behavior.
+- Shared links use the current game page by default, with an optional public canonical URL in `dist/share-config.js`. Strip URL credentials, query parameters and fragments before adding only `?leaderboard=1`. A direct link opens the existing leaderboard without starting a run or posting scores. Until configured otherwise, preview shares point to the preview; see `docs/SHARING.md`.
+
 ## Safe coding and deployment workflow
 1. Start from the latest `main`. Understand affected systems before changing them.
 2. Work on a feature branch. Make small, focused changes; preserve unrelated gameplay and media.
